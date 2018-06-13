@@ -1,5 +1,5 @@
 CPP          = g++
-FLAGS        = 
+FLAGS        = -Os -ffunction-sections -fdata-sections
 BIN          = main
 OBJ          = hw4.o
 

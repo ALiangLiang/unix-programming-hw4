@@ -67,7 +67,7 @@ int getIfs (If *ifs) {
   getifaddrs(&ifAddrStruct);
 
   while (ifAddrStruct != NULL) {
-		if (strcmp(ifAddrStruct->ifa_name, "lo") != 0) {
+    if (strcmp(ifAddrStruct->ifa_name, "lo") != 0) {
       if (ifAddrStruct->ifa_addr->sa_family == AF_INET && if_count < 32) {
         // Get name
         ifs[if_count].name = ifAddrStruct->ifa_name;
@@ -79,7 +79,6 @@ int getIfs (If *ifs) {
         inet_ntop(AF_INET, &(((struct sockaddr_in *)ifAddrStruct->ifa_broadaddr)->sin_addr), ifs[if_count].broadcast, INET_ADDRSTRLEN);
         // Get MAC
         getMac(ifs[if_count].mac, ifs[if_count].hwaddr, ifAddrStruct->ifa_name);
-cout << ifs[if_count].hwaddr[2] << endl;
         // Get index
         memset(&ifr, 0, sizeof(ifr));
         strcpy(ifr.ifr_name, ifAddrStruct->ifa_name);
@@ -88,7 +87,7 @@ cout << ifs[if_count].hwaddr[2] << endl;
         ifs[if_count].index = ifr.ifr_ifindex;
         if_count++;
       }
-  	}
+    }
     ifAddrStruct = ifAddrStruct->ifa_next;
   }
 
@@ -129,7 +128,14 @@ void sendMsg (char* name, char* msg, If *ifs, int if_count) {
   }
 }
 
-void listen () {
+bool isMACsSame (If *ifs, char *mac) {
+  for (int i = 0; i < sizeof(ifs); i++)
+    if (strcmp(ifs[i].mac, mac) == 0)
+      return true;
+  return false;
+}
+
+void listen (If *ifs) {
     //sleep(1);
   int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
   while (true) {
@@ -145,11 +151,14 @@ void listen () {
     buf[ssize] = '\0';
     eth = (struct ethhdr *)(buf);
     if (ntohs(eth->h_proto) == ETH_PROTO){
-      printf(">>> <%.2X:%.2X:%.2X:%.2X:%.2X:%.2X> %s\n",
-        eth->h_source[0], eth->h_source[1], eth->h_source[2],
-        eth->h_source[3], eth->h_source[4], eth->h_source[5],
-        buf + sizeof(struct ethhdr)
-      );
+      char mac[19];
+      sprintf(mac, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+              eth->h_source[0], eth->h_source[1], eth->h_source[2],
+              eth->h_source[3], eth->h_source[4], eth->h_source[5]);
+      if (isMACsSame(ifs, mac))
+        continue;
+      printf(">>> <%s> %s\n", mac, buf + sizeof(struct ethhdr));
     } 
   }
 }
+

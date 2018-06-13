@@ -6,35 +6,35 @@
 
 #include "hw4.h"
 
-
 using namespace std;
 
 int main (int argc, char* argv[]) {
   char name[32];
   pid_t pid = fork();
 
+  struct If ifs[32];
+  int if_count = getIfs(ifs);
+
   if (pid > 0) {
     printf("Enumerated network interfaces:\n");
-    struct If ifs[32];
-    int if_count = getIfs(ifs);
     for (int i = 0; i < if_count; i++) {
-      // cout << ifs[i].mac << endl;
       char if_info[128];
       sprintIf(if_info, &ifs[i]);
       cout << if_info << endl;
     }
   
     printf("Enter your name: ");
-    scanf("%32s", name);
+    if (scanf("%31s", name) < 0)
+      perror("scanf name");
     printf("Welcome, '%s'\n", name);
-    cout << if_count << endl;
 
     while (true) {
       char msg[256];
-      scanf("%s", msg);
+      if (scanf("%s", msg) < 0)
+        perror("scanf msg");
       sendMsg(name, msg, ifs, if_count);
     }
   } else if (pid == 0) {
-    listen();
+    listen(ifs);
   }
 }
