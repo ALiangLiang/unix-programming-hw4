@@ -49,7 +49,6 @@ void sprintIf (char *buf, If *if_info) {
         if_info->netmask,
         if_info->broadcast,
         if_info->mac);
-  cout << buf << endl;
 }
 
 int getIfs (If *ifs) {
