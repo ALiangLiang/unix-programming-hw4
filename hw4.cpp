@@ -20,7 +20,7 @@
 
 using namespace std;
 
-void getMac (char* mac, char* dv) {
+void getMac (char* mac, char* hwaddr, char* dv) {
     struct ifreq ifr;
     int sock;
     if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -32,6 +32,7 @@ void getMac (char* mac, char* dv) {
       perror("ioctl");
       return;
     }
+    memcpy(hwaddr, ifr.ifr_hwaddr.sa_data, 6);
     sprintf(mac, "%02X:%02X:%02X:%02X:%02X:%02X",
            (unsigned char)ifr.ifr_hwaddr.sa_data[0],
            (unsigned char)ifr.ifr_hwaddr.sa_data[1],
@@ -77,7 +78,8 @@ int getIfs (If *ifs) {
         // Get broadcast
         inet_ntop(AF_INET, &(((struct sockaddr_in *)ifAddrStruct->ifa_broadaddr)->sin_addr), ifs[if_count].broadcast, INET_ADDRSTRLEN);
         // Get MAC
-        getMac(ifs[if_count].mac, ifAddrStruct->ifa_name);
+        getMac(ifs[if_count].mac, ifs[if_count].hwaddr, ifAddrStruct->ifa_name);
+cout << ifs[if_count].hwaddr[2] << endl;
         // Get index
         memset(&ifr, 0, sizeof(ifr));
         strcpy(ifr.ifr_name, ifAddrStruct->ifa_name);
@@ -108,10 +110,10 @@ void sendMsg (char* name, char* msg, If *ifs, int if_count) {
   eth = (struct ethhdr *)(buf);
   for (int i = 0; i < if_count; i++) {
     char ifsaddr[616];
-    inet_pton(AF_INET, ifs[i].ip, ifsaddr);
+    inet_pton(AF_INET, ifs[i].mac, ifsaddr);
 
     for (int j = 0; j < 6; j++) {
-      eth->h_source[j] = (unsigned char)(ifsaddr[j]);
+      eth->h_source[j] = (unsigned char)(ifs[i].hwaddr[j]);
       eth->h_dest[j] = 0xff;
     }
     eth->h_proto = htons(ETH_PROTO);
@@ -136,15 +138,14 @@ void listen () {
     struct sockaddr saddr;
     int saddr_len = sizeof(saddr);
     ssize_t ssize = recvfrom(sock, buf, sizeof(buf), 0, &saddr, (socklen_t *)&saddr_len);
-    cout << ssize << endl;
     if (ssize < 0) {
       printf("recvfrom error");
-      continue;
+      return;
     }
     buf[ssize] = '\0';
     eth = (struct ethhdr *)(buf);
     if (ntohs(eth->h_proto) == ETH_PROTO){
-      printf("<%.2X:%.2X:%.2X:%.2X:%.2X:%.2X> %s",
+      printf(">>> <%.2X:%.2X:%.2X:%.2X:%.2X:%.2X> %s\n",
         eth->h_source[0], eth->h_source[1], eth->h_source[2],
         eth->h_source[3], eth->h_source[4], eth->h_source[5],
         buf + sizeof(struct ethhdr)
