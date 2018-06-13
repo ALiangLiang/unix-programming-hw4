@@ -93,45 +93,62 @@ int getIfs (If *ifs) {
   return if_count;
 }
 
-void communication (char* name, If *ifs, int if_count) {
+void sendMsg (char* name, char* msg, If *ifs, int if_count) {
   // Open raw socket.
-	int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+  int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
   struct ethhdr *eth;
-	char buf[BUFSIZ];
+  char buf[BUFSIZ];
   fd_set fds;
   size_t size;
+    
+  FD_ZERO(&fds); // Initialize fdset
+  FD_SET(sock, &fds); // Sets the bit for the file descriptor fd in the file descriptor set fdset.
 
-  while (true) {
-    char msg[256];
+  sprintf(buf + sizeof(struct ethhdr), "[%s]: %s", name, msg);
+  eth = (struct ethhdr *)(buf);
+  for (int i = 0; i < if_count; i++) {
+    char ifsaddr[616];
+    inet_pton(AF_INET, ifs[i].ip, ifsaddr);
 
-    scanf("%s", msg);
-
-    FD_ZERO(&fds); // Initialize fdset
-		FD_SET(sock, &fds); // Sets the bit for the file descriptor fd in the file descriptor set fdset.
-
-		sprintf(buf + sizeof(struct ethhdr), "[%s]: %s", name, msg);
-		eth = (struct ethhdr *)(buf);
-    for (int i = 0; i < if_count; i++) {
-      char *ifsaddr;
-      inet_pton(AF_INET, ifs[i].ip, ifsaddr);
-      eth->h_source[0] = (unsigned char)(ifsaddr[0]);
-      eth->h_source[1] = (unsigned char)(ifsaddr[1]);
-      eth->h_source[2] = (unsigned char)(ifsaddr[2]);
-      eth->h_source[3] = (unsigned char)(ifsaddr[3]);
-      eth->h_source[4] = (unsigned char)(ifsaddr[4]);
-      eth->h_source[5] = (unsigned char)(ifsaddr[5]);
-      eth->h_dest[0] = eth->h_dest[1] = eth->h_dest[2] = 0xff;
-      eth->h_dest[3] = eth->h_dest[4] = eth->h_dest[5] = 0xff;
-      eth->h_proto = htons(ETH_PROTO);
-
-      struct sockaddr_ll sadr_ll;
-      sadr_ll.sll_ifindex = ifs[i].index;
-      sadr_ll.sll_halen = ETH_ALEN;
-      sadr_ll.sll_addr[0] = sadr_ll.sll_addr[1] = sadr_ll.sll_addr[2] = 0xff;
-      sadr_ll.sll_addr[3] = sadr_ll.sll_addr[4] = sadr_ll.sll_addr[5] = 0xff;
-      size = sizeof(struct ethhdr) + strlen(buf + sizeof(struct ethhdr));
-  		// Send packet
-  		sendto(sock, buf, size, 0, (const struct sockaddr*)&sadr_ll, sizeof(struct sockaddr_ll));
+    for (int j = 0; j < 6; j++) {
+      eth->h_source[j] = (unsigned char)(ifsaddr[j]);
+      eth->h_dest[j] = 0xff;
     }
+    eth->h_proto = htons(ETH_PROTO);
+
+    struct sockaddr_ll sadr_ll;
+    sadr_ll.sll_ifindex = ifs[i].index;
+    sadr_ll.sll_halen = ETH_ALEN;
+    for (int j = 0; j < 6; j++)
+      sadr_ll.sll_addr[j] = 0xff;
+    size = sizeof(struct ethhdr) + strlen(buf + sizeof(struct ethhdr));
+    // Send packet
+    sendto(sock, buf, size, 0, (const struct sockaddr*)&sadr_ll, sizeof(struct sockaddr_ll));
+  }
+}
+
+void listen () {
+    //sleep(1);
+  int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+  while (true) {
+    char buf[BUFSIZ];
+    struct ethhdr *eth;
+    struct sockaddr saddr;
+    int saddr_len = sizeof(saddr);
+    ssize_t ssize = recvfrom(sock, buf, sizeof(buf), 0, &saddr, (socklen_t *)&saddr_len);
+    cout << ssize << endl;
+    if (ssize < 0) {
+      printf("recvfrom error");
+      continue;
+    }
+    buf[ssize] = '\0';
+    eth = (struct ethhdr *)(buf);
+    if (ntohs(eth->h_proto) == ETH_PROTO){
+      printf("<%.2X:%.2X:%.2X:%.2X:%.2X:%.2X> %s",
+        eth->h_source[0], eth->h_source[1], eth->h_source[2],
+        eth->h_source[3], eth->h_source[4], eth->h_source[5],
+        buf + sizeof(struct ethhdr)
+      );
+    } 
   }
 }
