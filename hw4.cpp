@@ -70,7 +70,7 @@ int getIfs (If *ifs) {
     if (strcmp(ifAddrStruct->ifa_name, "lo") != 0) {
       if (ifAddrStruct->ifa_addr->sa_family == AF_INET && if_count < 32) {
         // Get name
-        ifs[if_count].name = ifAddrStruct->ifa_name;
+        strncpy(ifs[if_count].name, ifAddrStruct->ifa_name, 20);
         // Get IP
         inet_ntop(AF_INET, &((struct sockaddr_in *)ifAddrStruct->ifa_addr)->sin_addr, ifs[if_count].ip, INET_ADDRSTRLEN);
         // Get netmask

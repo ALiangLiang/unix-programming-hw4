@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  lanchat:
+    build: .
+    volumes:
+      - ./:/root/lanchat
+    privileged: true
+    tty: true
+    mac_address: 8a:ca:58:b9:e9:51
