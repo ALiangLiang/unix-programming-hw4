@@ -1,5 +1,5 @@
 CPP          = g++
-FLAGS        = -Os -ffunction-sections -fdata-sections
+FLAGS        = -Os -ffunction-sections -fdata-sections -lgtest -pthread -lgcov -fprofile-arcs -ftest-coverage --coverage
 BIN          = main
 OBJ          = hw4.o
 
@@ -14,14 +14,14 @@ run:
 	./main
 
 $(BIN): $(OBJ) main.o
-	$(CPP) $(OBJ) main.o -o main -pthread
+	$(CPP) $(OBJ) main.o -o main -pthread -Os -ffunction-sections -fdata-sections
 
 test: clean tests
 	./test
 
 watch:
 	echo "\033[0;33mwatch...\033[0;37m"; \
-	watchmedo auto-restart --patterns="*.cpp" --interval 3 make
+	watchmedo auto-restart --patterns="*.cpp" --interval 3 make test
 
 tests: tests.o hw4_test.o $(OBJ)
 	$(CPP) tests.o hw4_test.o $(OBJ) -o test -lgtest -pthread -lgcov
@@ -38,6 +38,6 @@ hw4.o: hw4.cpp
 hw4_test.o: hw4_test.cpp
 	$(CPP) -c hw4_test.cpp -o hw4_test.o $(FLAGS)
 
-gcov : run
-	gcov -b hw4.cpp
-	cat hw4.cpp.gcov
+gcov :
+	gcov -b tests.cpp
+	cat tests.cpp.gcov
